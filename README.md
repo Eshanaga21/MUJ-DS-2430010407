@@ -16,7 +16,7 @@
 |---|---|
 | **Student Name** | Eshan Agarwal |
 | **Registration Number** | 2430010407 |
-| **Section** | K21AB |
+| **Section** | D |
 
 ---
 
