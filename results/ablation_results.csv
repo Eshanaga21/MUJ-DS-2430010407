@@ -1,0 +1,4 @@
+Model,Accuracy,Precision,Recall,F1,Specificity,ROC-AUC,Parameters,Training Time (s),Augmentation,BatchNorm + GAP,L1,Best Validation Accuracy
+Ablation_1_SimpleCNN,0.8635,0.8516,0.8337,0.8426,0.8866,0.9352,4287938,211.05,No,No,No,0.8729
+Ablation_2_FeatureAggregation,0.8902,0.8448,0.9181,0.8799,0.8684,0.9551,110914,688.09,Yes,Yes,No,0.9010
+Ablation_3_Proposed_RLFA_L1,0.8910,0.8344,0.9372,0.8828,0.8549,0.9565,110914,880.44,Yes,Yes,Yes,0.8929

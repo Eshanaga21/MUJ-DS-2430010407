@@ -1,0 +1,43 @@
+=== Dataset Information ===
+
+Dataset Name:    CNN Waste Classification Image Dataset
+Source:          https://www.kaggle.com/datasets/sujaykapadnis/cnn-waste-classification-image-dataset
+Download URL:    https://www.kaggle.com/api/v1/datasets/download/sujaykapadnis/cnn-waste-classification-image-dataset
+
+Total Images:    24,705
+Number of Classes: 2
+Class Names:     organic, recyclable
+
+Class Distribution:
+  - organic:     13,880 images (56.18%)
+  - recyclable:  10,825 images (43.82%)
+  - Imbalance ratio: 1.28 (not significantly imbalanced, < 1.5 threshold)
+
+Image Properties:
+  - Format: JPG, JPEG, PNG
+  - Min dimensions: 51 × 69
+  - Max dimensions: 1460 × 1500
+  - Resized to: 128 × 128 for training (RGB, normalized to [0, 1])
+
+Data Split (Stratified, random_state=42):
+  - Training Set:   17,292 images (70.0%)
+      * organic:     9,715 images
+      * recyclable:  7,577 images
+  - Validation Set:  3,707 images (15.0%)
+      * organic:     2,083 images
+      * recyclable:  1,624 images
+  - Test Set:        3,706 images (15.0%)
+      * organic:     2,082 images
+      * recyclable:  1,624 images
+
+Preprocessing Steps:
+  1. Recursive directory scan to identify all image files
+  2. Verification of image file integrity and readability
+  3. Resizing of all images to 128 × 128 pixels
+  4. Normalization of pixel intensities to [0.0, 1.0] by dividing by 255.0
+  5. Training-only data augmentation:
+     - RandomFlip (horizontal)
+     - RandomRotation (factor=0.15)
+     - RandomZoom (factor=0.15)
+     - RandomContrast (factor=0.10)
+  6. Optimized tf.data.Dataset pipeline with batch_size=32 and AUTOTUNE prefetching

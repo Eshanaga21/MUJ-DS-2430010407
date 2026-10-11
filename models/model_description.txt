@@ -1,0 +1,79 @@
+=== Model Description ===
+
+Model Name: RLFA-CNN (Regularized Lightweight Feature Aggregation CNN)
+Framework:  TensorFlow 2.20.0 / Keras
+Pretrained: No (trained from scratch)
+Task:       Binary classification (Organic vs Recyclable waste)
+
+=== Architecture ===
+
+The RLFA-CNN is a parameter-efficient 3-layer CNN designed for waste
+classification. It combines five complementary components:
+
+1. Moderate Data Augmentation (training only)
+   - RandomFlip, RandomRotation, RandomZoom, RandomContrast
+
+2. Batch Normalization after each Conv2D
+   - Batch Normalization can help stabilize training
+
+3. Global Average Pooling (GAP)
+   - Replaces Flatten, reducing parameters from ~4.3M to ~111K
+
+4. L1 Kernel Regularization (lambda=1e-5)
+   - L1 regularization encourages sparse weights
+
+5. Adaptive Learning Rate (ReduceLROnPlateau)
+   - factor=0.5, patience=2, min_lr=1e-6
+
+=== Layer-by-Layer ===
+
+Layer                   Output Shape    Parameters
+-----                   ------------    ----------
+Input                   (128, 128, 3)   0
+Augmentation (train)    (128, 128, 3)   0
+Conv2D(32, 3x3, ReLU)   (128, 128, 32)  896
+BatchNormalization       (128, 128, 32)  128
+MaxPooling2D            (64, 64, 32)    0
+Conv2D(64, 3x3, ReLU)   (64, 64, 64)    18,496
+BatchNormalization       (64, 64, 64)    256
+MaxPooling2D            (32, 32, 64)    0
+Conv2D(128, 3x3, ReLU)  (32, 32, 128)   73,856
+BatchNormalization       (32, 32, 128)   512
+MaxPooling2D            (16, 16, 128)   0
+GlobalAveragePooling2D  (128,)          0
+Dense(128, ReLU)        (128,)          16,512
+Dropout(0.3)            (128,)          0
+Dense(2, Softmax)       (2,)            258
+
+=== Parameter Breakdown ===
+Total Parameters:         110,914
+Trainable Parameters:     110,466
+Non-Trainable Parameters: 448 (BatchNormalization moving mean/variance statistics)
+
+=== Baseline Comparison ===
+
+The SimpleCNN baseline uses the same Conv2D layers but with:
+- Flatten instead of GAP
+- No BatchNormalization
+- No L1 regularization
+- No augmentation
+
+This results in ~4,287,938 parameters (38.7x more than RLFA-CNN).
+
+=== Training Configuration ===
+
+Optimizer:        Adam (lr=0.001)
+Loss:             Sparse Categorical Crossentropy
+Batch Size:       32
+Class Weights:    Not required (imbalance ratio=1.28 < 1.5 threshold)
+
+CO3 Standalone Model Comparison:
+Maximum epochs: 50
+EarlyStopping patience: 5
+
+CO5 Controlled Ablation:
+Maximum epochs: 30
+EarlyStopping patience: 5
+
+CO4 Transfer-Learning Benchmarks:
+Maximum epochs: 15

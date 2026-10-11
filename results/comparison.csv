@@ -1,0 +1,4 @@
+Model,Accuracy,Precision,Recall,F1,Specificity,ROC-AUC,Parameters,Training Time (s),Best Validation Accuracy,Reference
+EfficientNetB0,0.9309,0.9166,0.9267,0.9216,0.9342,0.9773,4052133,488.80,0.9369,"Tan & Le (2019) EfficientNet: Rethinking Model Scaling"
+MobileNetV2,0.9220,0.9078,0.9150,0.9114,0.9275,0.9758,2260546,267.61,0.9355,"Sandler et al. (2018) MobileNetV2: Inverted Residuals"
+Proposed RLFA-CNN + L1,0.8910,0.8344,0.9372,0.8828,0.8549,0.9565,110914,880.44,0.8929,"Proposed Lightweight Configuration (Ours)"
