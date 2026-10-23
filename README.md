@@ -261,7 +261,87 @@ The project reports distinct evaluation figures depending on the experimental pr
 
 ---
 
-## 11. Folder Structure
+## 11. Industry-Ready Upgrade: MobileViT-S (CNN + Vision Transformer Hybrid)
+
+### A. Motivation: Transitioning from Prototype to Production
+While the proposed **RLFA-CNN** proved exceptional parameter efficiency (111K parameters) for a pure CNN trained from scratch, industrial automated recycling sorting facilities present critical challenges:
+- **Occlusion and Overlapping Items:** Items scattered on high-speed conveyor belts partially overlap.
+- **Deformation:** Crushed plastic bottles, crumpled cartons, and torn bags change local geometric shapes.
+- **Receptive Field Limitation:** Standard convolution kernels capture only localized receptive fields, struggling with global object reasoning without massive depth.
+
+To bridge this gap, an **industry-ready hybrid CNN + Vision Transformer (MobileViT-S)** was implemented and benchmarked on the identical 24,705-image dataset with the exact stratified 70/15/15 split (`SEED = 42`).
+
+### B. MobileViT Architecture
+MobileViT (Mehta & Rastegari, *ICLR 2022*) replaces traditional local processing in deeper CNN layers with lightweight **MobileViT blocks**:
+1. **Local Representation:** Standard $3\times3$ convolutions and point-wise $1\times1$ convolutions encode local spatial representations.
+2. **Global Representation via Multi-Head Self-Attention:** Feature patches are flattened into tokens and processed by multi-head self-attention transformer blocks, learning long-range dependencies across the entire visual field.
+3. **Fusion:** A $1\times1$ convolution projects tokens back to feature maps, followed by concatenation with original local features and a $3\times3$ fusion convolution.
+4. **Parameter Footprint:** At ~4.9M parameters, MobileViT-S combines the inductive bias of CNNs with the global context of Transformers while remaining edge-deployable (real-time inference on NVIDIA Jetson hardware).
+
+```
+Input Image (224×224×3)
+        ↓
+  ┌─────────────┐
+  │  Conv-Mobile│  ← Extracts local features (edges, textures)
+  │  InvertedRes │     Initial downsampling & spatial processing
+  └─────────────┘
+        ↓
+  ┌─────────────────────┐
+  │  MobileViT Blocks   │  ← Transformer Self-Attention
+  │  (Global Attention) │     Models global relationships across
+  │                     │     crushed, occluded & overlapping waste
+  └─────────────────────┘
+        ↓
+  ┌─────────────┐
+  │  GAP + Head │  ← Aggregation & 2-Class Softmax Output
+  └─────────────┘
+```
+
+### C. Quantitative Results & Comparison vs. RLFA-CNN
+Trained using PyTorch (`timm`), AdamW optimizer ($\text{lr}=10^{-4}$), and `ReduceLROnPlateau` scheduler on an NVIDIA Tesla T4 GPU. Training completed in **18 minutes**, converging and early-stopping at epoch 7.
+
+| Metric | RLFA-CNN (Baseline) | **MobileViT-S (Hybrid Transformer)** | **Absolute Gain** |
+|---|---:|---:|---:|
+| **Test Accuracy** | 90.50% | **96.06%** | **+5.56%** |
+| **Weighted F1-Score** | 0.8828 | **0.9606** | **+0.0778** |
+| **Weighted Precision** | 0.8810 | **0.9607** | **+0.0797** |
+| **Weighted Recall** | 0.8910 | **0.9606** | **+0.0696** |
+| **ROC-AUC** | 0.9565 | **0.9922** | **+0.0357** |
+| **Specificity** | 0.8800 | **0.9606** | **+0.0806** |
+| **Total Parameters** | 110,914 | 4,938,914 | ~4.9M (Edge-ready) |
+| **Pretrained Weights** | None (Scratch) | ImageNet-1K | Fine-tuned transfer |
+| **Training Time (GPU)** | ~30 min | **18.0 min** | Fast convergence (7 epochs) |
+
+#### Per-Class Breakdown on Held-Out Test Set (3,706 samples):
+| Class | Precision | Recall | F1-Score | Support |
+|---|---:|---:|---:|---:|
+| **Organic** | 0.97 | 0.96 | 0.96 | 2,082 |
+| **Recyclable** | 0.95 | 0.96 | 0.96 | 1,624 |
+| **Macro Average** | **0.96** | **0.96** | **0.96** | **3,706** |
+| **Weighted Average** | **0.96** | **0.96** | **0.96** | **3,706** |
+
+#### Test Confusion Matrix:
+| Actual \ Predicted | Predicted Organic (0) | Predicted Recyclable (1) | Total Actual |
+|---|---:|---:|---:|
+| **Actual Organic (0)** | **2,002** | 80 | 2,082 |
+| **Actual Recyclable (1)** | 66 | **1,558** | 1,624 |
+| **Total Predicted** | 2,068 | 1,638 | **3,706** |
+
+### D. Full Evolutionary Architecture Comparison
+| Model Architecture | Paradigm | Test Accuracy | F1-Score | ROC-AUC | Parameters | Status |
+|---|---|---:|---:|---:|---:|---|
+| **SimpleCNN** | Flatten CNN | 86.35% | 0.8426 | 0.9352 | 4,287,938 | Baseline Ablation |
+| **FeatureAggregation** | GAP + BN CNN | 89.02% | 0.8799 | 0.9551 | 110,914 | Lightweight Redesign |
+| **RLFA-CNN (Proposed)** | Regularized GAP CNN | 90.50% | 0.8828 | 0.9565 | 110,914 | Core Academic Contribution |
+| **MobileNetV2** | Inverted Residual CNN | 92.20% | 0.9114 | 0.9758 | 2,260,546 | Pretrained Benchmark |
+| **EfficientNetB0** | Compound Scaled CNN | 93.09% | 0.9216 | 0.9773 | 4,052,133 | Pretrained Benchmark |
+| **MobileViT-S (Ours)** | **CNN + Vision Transformer** | **96.06%** | **0.9606** | **0.9922** | **4,938,914** | **Industry-Ready Upgrade** |
+
+Executable notebook: [`notebooks/mobilevit_training.ipynb`](notebooks/mobilevit_training.ipynb)
+
+---
+
+## 12. Folder Structure
 
 ```text
 2430010407/
@@ -283,7 +363,8 @@ The project reports distinct evaluation figures depending on the experimental pr
 │
 ├── notebooks/
 │   ├── co3_waste_classification.ipynb     # CO3 complete training and evaluation notebook
-│   └── co4_co5_extension.ipynb            # CO4 benchmarks & CO5 ablation study notebook
+│   ├── co4_co5_extension.ipynb            # CO4 benchmarks & CO5 ablation study notebook
+│   └── mobilevit_training.ipynb           # MobileViT-S (CNN + Transformer) training & benchmark notebook
 │
 ├── results/
 │   ├── results.csv                        # Final held-out test evaluation metrics
@@ -307,7 +388,7 @@ The project reports distinct evaluation figures depending on the experimental pr
 
 ---
 
-## 12. Project Limitations
+## 13. Project Limitations
 
 1. **Dataset Scope:** The model was evaluated strictly on the specified Kaggle Organic/Recyclable waste dataset (24,705 images); external real-world generalization across varied waste streams was not independently evaluated.
 2. **Joint Ablation Scope:** CO5's first ablation step modifies augmentation, Batch Normalization, and Global Average Pooling jointly; therefore, their individual contributions are not isolated separately.
@@ -317,17 +398,20 @@ The project reports distinct evaluation figures depending on the experimental pr
 
 ---
 
-## 13. References
+## 14. References
 
 1. Tan, M., & Le, Q. (2019). *"EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks."* International Conference on Machine Learning (ICML), PMLR, 6105–6114.
 2. Sandler, M., Howard, A., Zhu, M., Zhmoginov, A., & Chen, L. C. (2018). *"MobileNetV2: Inverted Residuals and Linear Bottlenecks."* IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 4510–4520.
 3. Islam, M. S. B., Islam Sumon, M. S., Majid, M. E., et al. (2025). *"ECCDN-Net: A deep learning-based technique for efficient organic and recyclable waste classification."* Waste Management, 193, 363–375. DOI: 10.1016/j.wasman.2024.12.023
+4. Mehta, S., & Rastegari, M. (2022). *"MobileViT: Light-weight, General-purpose, and Mobile-friendly Vision Transformer."* International Conference on Learning Representations (ICLR 2022). arXiv: 2110.02178.
 
 ---
 
-## 14. Environment and Reproducibility
+## 15. Environment and Reproducibility
 - **Python:** 3.13.15
 - **TensorFlow:** 2.20.0
+- **PyTorch:** 2.x
+- **timm (PyTorch Image Models):** 1.0.x
 - **NumPy:** 2.1.3
 - **Pandas:** 2.2.3
 - **Scikit-Learn:** 1.6.1
@@ -335,4 +419,4 @@ The project reports distinct evaluation figures depending on the experimental pr
 - **Seaborn:** 0.13.2
 - **Pillow:** 11.3.0
 
-Random seeds are fixed at 42 across Python, NumPy, and TensorFlow to improve reproducibility. GPU execution may still introduce minor run-to-run numerical variation.
+Random seeds are fixed at 42 across Python, NumPy, TensorFlow, and PyTorch to improve reproducibility. GPU execution may still introduce minor run-to-run numerical variation.
